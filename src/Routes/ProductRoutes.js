@@ -106,7 +106,6 @@ productRouter.get(
   "/get-product",
   asyncHandler(async (req, res) => {
     let id = req.query.id;
-    console.log(id);
     if (id) {
       let sql = `Select * FROM myshop.product WHERE id=${id}`;
       let [rows, fields] = await promisePool.query(sql);
@@ -166,17 +165,37 @@ productRouter.post(
 );
 
 productRouter.post(
-  "/inactive",
+  "/edit/inactive",
   asyncHandler(async (req, res) => {
-    let id = req.query.id;
+    let id = req.body.id;
     let deletedAt = moment(Date.now()).format("YYYY-MM-DD HH:mm:ss");
 
     if (id) {
       let sql = `UPDATE product SET deleted_at="${deletedAt}" WHERE id=${id}`;
       let [rows, fields] = await promisePool.query(sql);
-      console.log("rest", rows);
       if (!isEmptyValue(rows)) {
-        res.status(200).json({ errCode: 0, errMessage: "successfullyhh  " });
+        res.status(200).json({ errCode: 0, errMessage: "successfully  " });
+      } else {
+        res.status(404);
+        throw new Error("Delete category fail!");
+      }
+    } else {
+      res.status(404);
+      throw new Error("Not valid id");
+    }
+  })
+);
+
+productRouter.post(
+  "/edit/active",
+  asyncHandler(async (req, res) => {
+    let id = req.body.id;
+
+    if (id) {
+      let sql = `UPDATE product SET deleted_at=${null} WHERE id=${id}`;
+      let [rows, fields] = await promisePool.query(sql);
+      if (!isEmptyValue(rows)) {
+        res.status(200).json({ errCode: 0, errMessage: "successfully  " });
       } else {
         res.status(404);
         throw new Error("Delete category fail!");

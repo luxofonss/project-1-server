@@ -5,6 +5,7 @@ import { notFound, errorHandler } from "./Middleware/error";
 import homeRouter from "./Routes/homeRoutes";
 import userRouter from "./Routes/UserRoutes";
 import productRouter from "./Routes/ProductRoutes";
+import categoryRouter from "./Routes/CategoryRoutes";
 
 var db = require("../connectDB");
 var cors = require("cors");
@@ -46,6 +47,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use("/", homeRouter);
 app.use("/api/users", userRouter);
 app.use("/api/product", productRouter);
+app.use("/api/category", categoryRouter);
 
 viewEngine(app);
 
