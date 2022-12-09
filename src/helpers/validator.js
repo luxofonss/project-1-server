@@ -12,3 +12,11 @@ export function phoneNumberValidator(password) {
   let validate = password.match(regexp);
   return !isEmptyValue(validate);
 }
+
+export function addCategoryValidator(data) {
+  if (data.name && data.cate_code) {
+    return true;
+  } else {
+    return false;
+  }
+}
