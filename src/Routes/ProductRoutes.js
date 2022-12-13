@@ -9,44 +9,6 @@ const promisePool = db.promise();
 let productRouter = express.Router();
 
 productRouter.post(
-  "/create-category",
-  asyncHandler(async (req, res) => {
-    let createdAt = moment(Date.now()).format("YYYY-MM-DD HH:mm:ss");
-    let category = { ...req.body, created_at: createdAt };
-
-    const [isExist, existFields] = await promisePool.query(
-      `SELECT * FROM category WHERE cate_code = '${category.cate_code}'`
-    );
-
-    if (isEmptyValue(isExist)) {
-      let sql = `INSERT INTO myshop.category SET name= "${category.name}", created_at= "${category.created_at}", 
-        description="${category.description}", cate_code="${category.cate_code}"`;
-
-      await promisePool.query(sql, [category]);
-      let [newCates, newCateFields] = await promisePool.query(
-        `SELECT * FROM category WHERE cate_code = "${category.cate_code}"`
-      );
-      let newCate = newCates[0];
-
-      if (newCate) {
-        res.status(200).json({
-          id: newCate.id,
-          name: newCate.name,
-          description: newCate.description,
-          createAt: newCate.created_at,
-        });
-      } else {
-        res.status(404);
-        throw new Error("Add category fail!");
-      }
-    } else {
-      res.status(404);
-      throw new Error("Category has already exist!");
-    }
-  })
-);
-
-productRouter.post(
   "/create-product",
   asyncHandler(async (req, res) => {
     let product = req.body;
@@ -91,13 +53,19 @@ productRouter.post(
 productRouter.get(
   "/",
   asyncHandler(async (req, res) => {
-    let sql = "Select * FROM myshop.product";
-    let [rows, fields] = await promisePool.query(sql);
-    if (rows.length > 0) {
-      res.status(200).json(rows);
-    } else {
-      res.status(404);
-      throw new Error("Add category fail!");
+    try {
+      let sql = `Select * FROM myshop.product`;
+      console.log(sql);
+      let [rows, fields] = await promisePool.query(sql);
+      if (rows.length > 0) {
+        res.status(200).json(rows);
+      } else {
+        res.status(404);
+        throw new Error("No product found");
+      }
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ errCode: 1, errMessage: "server error" });
     }
   })
 );
@@ -105,15 +73,42 @@ productRouter.get(
 productRouter.get(
   "/get-product",
   asyncHandler(async (req, res) => {
-    let id = req.query.id;
-    if (id) {
-      let sql = `Select * FROM myshop.product WHERE id=${id}`;
-      let [rows, fields] = await promisePool.query(sql);
+    let query = req.query;
+    if (query) {
+      let sql = `Select 
+        pr.id, pr.name, pr.description, pr.total, pr.color, pr.size,
+        pr.sol_num, pr.price, pr.prod_promo, pr.prod_code, pr.image, pr.created_at, pr.deleted_at, pr.modified_at, 
+        ct.cate_code
+      FROM myshop.product pr JOIN myshop.category ct on pr.category_id = ct.id 
+      ${!isEmptyValue(query) ? "WHERE" : ""}
+      ${query.id ? `pr.id=${query.id}` : ""}
+      ${query.id && query.cate_code ? "and" : ""}
+      ${query.cate_code ? `ct.cate_code="${query.cate_code}"` : ""}
+      ${
+        (query.id && query.search) || (query.cate_code && query.search)
+          ? "and"
+          : ""
+      }
+      ${query.search ? `pr.name like "%${query.search}%"` : ""}
+      ${
+        (query.id && query.cate_id) ||
+        (query.cate_code && query.cate_id) ||
+        (query.search && query.cate_id)
+          ? "and"
+          : ""
+      }
+      ${query.cate_id ? `ct.id=${query.cate_id}` : ""}`;
+
+      console.log(sql);
+      let [rows, fields] = await promisePool.query(sql, [
+        query.id,
+        query.cate_code,
+      ]);
       if (rows.length > 0) {
-        res.status(200).json(rows[0]);
+        res.status(200).json(rows);
       } else {
         res.status(404);
-        throw new Error("Add category fail!");
+        throw new Error("Category not found");
       }
     } else {
       res.status(404);
@@ -134,10 +129,19 @@ productRouter.post(
     );
 
     let category_id = cate_id[0][0].id;
+    let modified_at = moment(Date.now()).format("YYYY-MM-DD HH:mm:ss");
 
-    let sql = `UPDATE product SET name="${product.name}", description="${product.description}",
+    let sql = `UPDATE product SET name="${product.name}", description="${
+      product.description
+    }",
     total=${product.total},color="${product.color}",size=${product.size},
-    price=${product.price}, image="${product.image}", category_id=${category_id}, prod_code="${product.prod_code}" WHERE id="${product.id}"`;
+    price=${product.price}, image="${
+      product.image
+    }", category_id=${category_id},
+    prod_code="${product.prod_code}", deleted_at=${
+      product.deleted_at === "" ? null : `"${product.deleted_at}"`
+    }, modified_at="${modified_at}"
+    WHERE id="${product.id}"`;
 
     console.log(sql);
 
